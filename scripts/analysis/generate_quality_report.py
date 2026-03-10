@@ -8,7 +8,7 @@ Flags are meant to assist analysts in deciding which sessions to include/exclude
 from analysis, not to automatically filter data.
 
 Usage:
-    poetry run python scripts/analysis/generate_quality_report.py [--output OUTPUT]
+    uv run python scripts/analysis/generate_quality_report.py [--output OUTPUT]
 
 Author: GitHub Copilot
 Date: November 11, 2025

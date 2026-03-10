@@ -278,7 +278,7 @@ class DyadPlotter:
         # Get color configuration
         colors = self.viz_config.get("colors", {})
         sub1_color = colors.get("subject1", "#1f77b4")
-        sub2_color = colors.get("subject2", "#ff7g0e")
+        sub2_color = colors.get("subject2", "#ff7f0e")
         resting_color = colors.get("resting", "#2ca02c")
 
         styles = self.viz_config.get("styles", {})

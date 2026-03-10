@@ -209,8 +209,8 @@ class BVPCleaner:
         if np.all(np.isnan(signal)):
             raise ValueError(f"BVP signal contains only NaN values for {moment}")
         
-        # Check minimum duration (at least 10 seconds for meaningful analysis)
-        min_duration = 10  # seconds
+        # Check minimum duration for meaningful analysis
+        min_duration = self.processing_config.get('min_duration', 10)  # seconds
         if len(signal) < sampling_rate * min_duration:
             logger.warning(
                 f"Short BVP signal for {moment}: {len(signal)/sampling_rate:.1f}s "

@@ -11,9 +11,9 @@ Three approaches are computed:
 3. Mixed model: Linear mixed model with participant as random effect
 
 Usage:
-    poetry run python scripts/physio/dppa/analyze_icd_statistics.py --task therapy
-    poetry run python scripts/physio/dppa/analyze_icd_statistics.py --task restingstate
-    poetry run python scripts/physio/dppa/analyze_icd_statistics.py --all
+    uv run python scripts/physio/dppa/analyze_icd_statistics.py --task therapy
+    uv run python scripts/physio/dppa/analyze_icd_statistics.py --task restingstate
+    uv run python scripts/physio/dppa/analyze_icd_statistics.py --all
 
 Authors: Lena Adel, Remy Ramadour
 Date: November 2025

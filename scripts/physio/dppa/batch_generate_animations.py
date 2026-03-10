@@ -7,13 +7,13 @@ in the intra-family configuration.
 
 Usage:
     # Generate frames only
-    poetry run python scripts/physio/dppa/batch_generate_animations.py --task therapy
+    uv run python scripts/physio/dppa/batch_generate_animations.py --task therapy
     
     # Generate frames + videos
-    poetry run python scripts/physio/dppa/batch_generate_animations.py --task therapy --video
+    uv run python scripts/physio/dppa/batch_generate_animations.py --task therapy --video
     
     # Specific dyads
-    poetry run python scripts/physio/dppa/batch_generate_animations.py --dyads g01p01_ses-01_vs_g01p02_ses-01
+    uv run python scripts/physio/dppa/batch_generate_animations.py --dyads g01p01_ses-01_vs_g01p02_ses-01
 
 Authors: Lena Adel, Remy Ramadour
 Date: November 2025

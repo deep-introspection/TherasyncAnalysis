@@ -184,11 +184,12 @@ class EDACleaner:
             raise ValueError("Input data is empty")
         
         # Check for minimum length (need at least a few seconds for decomposition)
-        min_samples = self.sampling_rate * 5  # 5 seconds minimum
+        min_duration = self.processing_config.get('min_duration', 5)  # seconds
+        min_samples = self.sampling_rate * min_duration
         if len(data) < min_samples:
             logger.warning(
                 f"Short EDA signal: {len(data)} samples ({len(data)/self.sampling_rate:.1f}s). "
-                f"Minimum recommended: {min_samples} samples (5s)"
+                f"Minimum recommended: {min_samples} samples ({min_duration}s)"
             )
         
         # Check for all NaN
@@ -477,7 +478,8 @@ class EDACleaner:
         result = processed_signals.copy()
         
         quality_scores = []
-        window_size = self.sampling_rate * 4  # 4 seconds window
+        quality_window = self.processing_config.get('quality_window', 4)  # seconds
+        window_size = self.sampling_rate * quality_window
         
         for i in range(len(result)):
             # Get window around current sample

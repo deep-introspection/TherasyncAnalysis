@@ -499,7 +499,7 @@ class TestPlotDyadCLI:
         # Run script with per-task methods
         # The script should now support loading different methods per task
         cmd = [
-            "poetry", "run", "python", str(script_path),
+            "uv", "run", "python", str(script_path),
             "--dyad", valid_dyad_pair,
             "--method", method,  # Primary method for therapy
             "--output-dir", str(temp_output_dir)
@@ -530,7 +530,7 @@ class TestPlotDyadCLI:
         import subprocess
         
         cmd = [
-            "poetry", "run", "python", str(script_path),
+            "uv", "run", "python", str(script_path),
             "--method", method
         ]
         
@@ -544,7 +544,7 @@ class TestPlotDyadCLI:
         """Test script provides help message."""
         import subprocess
         
-        cmd = ["poetry", "run", "python", str(script_path), "--help"]
+        cmd = ["uv", "run", "python", str(script_path), "--help"]
         result = subprocess.run(cmd, capture_output=True, text=True)
         
         assert result.returncode == 0, "Help command should succeed"

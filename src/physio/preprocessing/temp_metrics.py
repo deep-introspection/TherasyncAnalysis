@@ -80,9 +80,9 @@ class TEMPMetricsExtractor:
         if len(data) == 0:
             return self._empty_metrics(moment)
         
-        # Determine column names (handle both pre and post cleaning formats)
-        clean_col = 'TEMP_Clean' if 'TEMP_Clean' in data.columns else 'temp_clean'
-        quality_col = 'TEMP_Quality' if 'TEMP_Quality' in data.columns else 'temp_quality'
+        # Column names (uppercase = NeuroKit/BIDS convention)
+        clean_col = 'TEMP_Clean'
+        quality_col = 'TEMP_Quality'
         
         if clean_col not in data.columns:
             logger.error(f"Required column {clean_col} not found in data")

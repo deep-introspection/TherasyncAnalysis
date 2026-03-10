@@ -79,9 +79,9 @@ class HRMetricsExtractor:
         if len(data) == 0:
             return self._empty_metrics(moment)
         
-        # Get valid HR data - handle both column name conventions
-        hr_col = 'HR_Clean' if 'HR_Clean' in data.columns else 'hr_clean'
-        quality_col = 'HR_Quality' if 'HR_Quality' in data.columns else 'hr_quality'
+        # Get valid HR data (uppercase = NeuroKit/BIDS convention)
+        hr_col = 'HR_Clean'
+        quality_col = 'HR_Quality'
         
         valid_mask = ~data[hr_col].isna()
         valid_data = data[valid_mask].copy()

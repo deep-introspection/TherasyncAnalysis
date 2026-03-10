@@ -11,9 +11,9 @@ This script analyzes all preprocessed physiological data to:
 Phase 1 of preprocessing artifacts investigation (PREPROCESSING_ISSUES.md).
 
 Usage:
-    poetry run python scripts/analysis/compute_preprocessing_stats.py [--config CONFIG]
-    poetry run python scripts/analysis/compute_preprocessing_stats.py --verbose
-    poetry run python scripts/analysis/compute_preprocessing_stats.py --output results/custom_stats.csv
+    uv run python scripts/analysis/compute_preprocessing_stats.py [--config CONFIG]
+    uv run python scripts/analysis/compute_preprocessing_stats.py --verbose
+    uv run python scripts/analysis/compute_preprocessing_stats.py --output results/custom_stats.csv
 
 Author: TherasyncPipeline Team
 Date: November 11, 2025
@@ -511,13 +511,13 @@ def main():
         epilog="""
 Examples:
     # Run with default config
-    poetry run python scripts/analysis/compute_preprocessing_stats.py
+    uv run python scripts/analysis/compute_preprocessing_stats.py
     
     # Run with custom config and verbose output
-    poetry run python scripts/analysis/compute_preprocessing_stats.py --config config/custom.yaml --verbose
+    uv run python scripts/analysis/compute_preprocessing_stats.py --config config/custom.yaml --verbose
     
     # Specify custom output location
-    poetry run python scripts/analysis/compute_preprocessing_stats.py --output results/custom_stats.csv
+    uv run python scripts/analysis/compute_preprocessing_stats.py --output results/custom_stats.csv
         """
     )
     

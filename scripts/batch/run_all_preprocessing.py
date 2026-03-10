@@ -229,7 +229,7 @@ class BatchPreprocessor:
         script_path = Path('scripts/physio/preprocessing') / script_name
         
         cmd = [
-            'poetry', 'run', 'python', str(script_path),
+            'uv', 'run', 'python', str(script_path),
             '--subject', subject_id,
             '--session', session_id
         ]

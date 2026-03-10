@@ -6,9 +6,9 @@ Runs the complete alliance-ICD correlation analysis, generating
 statistical reports and visualizations.
 
 Usage:
-    poetry run python scripts/analysis/run_alliance_icd_analysis.py
-    poetry run python scripts/analysis/run_alliance_icd_analysis.py --no-viz
-    poetry run python scripts/analysis/run_alliance_icd_analysis.py --output-dir custom/path
+    uv run python scripts/analysis/run_alliance_icd_analysis.py
+    uv run python scripts/analysis/run_alliance_icd_analysis.py --no-viz
+    uv run python scripts/analysis/run_alliance_icd_analysis.py --output-dir custom/path
 
 Authors: Remy Ramadour
 Date: November 2025
@@ -38,13 +38,13 @@ def parse_args():
         epilog="""
 Examples:
     # Run full analysis with visualizations
-    poetry run python scripts/analysis/run_alliance_icd_analysis.py
+    uv run python scripts/analysis/run_alliance_icd_analysis.py
     
     # Run without visualizations (stats only)
-    poetry run python scripts/analysis/run_alliance_icd_analysis.py --no-viz
+    uv run python scripts/analysis/run_alliance_icd_analysis.py --no-viz
     
     # Specify output directory
-    poetry run python scripts/analysis/run_alliance_icd_analysis.py --output-dir data/derivatives/analysis
+    uv run python scripts/analysis/run_alliance_icd_analysis.py --output-dir data/derivatives/analysis
         """
     )
     

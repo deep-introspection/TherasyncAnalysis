@@ -24,7 +24,7 @@ def test_script_exists():
 def test_script_help():
     """Test that script shows help message."""
     result = subprocess.run(
-        ['poetry', 'run', 'python', str(SCRIPT_PATH), '--help'],
+        ['uv', 'run', 'python', str(SCRIPT_PATH), '--help'],
         cwd=PROJECT_ROOT,
         capture_output=True,
         text=True
@@ -54,7 +54,7 @@ def test_frame_generation_sample():
     # Run script
     result = subprocess.run(
         [
-            'poetry', 'run', 'python', str(SCRIPT_PATH),
+            'uv', 'run', 'python', str(SCRIPT_PATH),
             '--dyad', 'g01p01_ses-01_vs_g01p02_ses-01',
             '--method', 'sliding_duration30s_step5s',
             '--task', 'therapy',
@@ -98,7 +98,7 @@ def test_invalid_dyad_format():
     """Test that script rejects invalid dyad format."""
     result = subprocess.run(
         [
-            'poetry', 'run', 'python', str(SCRIPT_PATH),
+            'uv', 'run', 'python', str(SCRIPT_PATH),
             '--dyad', 'invalid_format',
             '--max-epochs', '1'
         ],
