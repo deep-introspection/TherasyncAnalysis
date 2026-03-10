@@ -12,6 +12,5 @@ Date: November 2025
 """
 
 from .epoch_assigner import EpochAssigner
-from .epoch_bids_writer import EpochBIDSWriter
 
-__all__ = ["EpochAssigner", "EpochBIDSWriter"]
+__all__ = ["EpochAssigner"]

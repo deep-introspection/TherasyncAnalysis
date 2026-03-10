@@ -177,42 +177,6 @@ class TestEpochAssigner:
         pass
 
 
-class TestEpochBIDSWriter:
-    """Test suite for EpochBIDSWriter class."""
-    
-    def test_detect_task_from_filename(self):
-        """Test task detection from BIDS filename."""
-        # TODO: Implement
-        # writer = EpochBIDSWriter()
-        # 
-        # assert writer._detect_task("sub-g01p01_ses-01_task-restingstate_desc-processed_recording-bvp.tsv") == "restingstate"
-        # assert writer._detect_task("sub-g01p01_ses-01_task-therapy_desc-rrintervals_physio.tsv") == "therapy"
-        pass
-    
-    def test_add_epoch_columns_restingstate(self):
-        """Test that restingstate files get epoch 0 for all columns."""
-        # TODO: Implement
-        # Create mock data
-        # Add epoch columns
-        # Verify all are 0
-        pass
-    
-    def test_add_epoch_columns_therapy(self):
-        """Test that therapy files get proper epoch assignments."""
-        # TODO: Implement
-        # Create mock therapy data
-        # Add epoch columns
-        # Verify different methods create different epoch patterns
-        pass
-    
-    def test_output_path_creation(self):
-        """Test BIDS output path structure."""
-        # TODO: Implement
-        # Input: derivatives/preprocessing/sub-g01p01/ses-01/bvp/file.tsv
-        # Output: derivatives/epoched/sub-g01p01/ses-01/bvp/file.tsv
-        pass
-
-
 @pytest.fixture
 def sample_bvp_data():
     """Generate sample BVP data for testing."""
