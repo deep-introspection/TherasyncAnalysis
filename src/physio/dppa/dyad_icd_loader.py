@@ -7,7 +7,7 @@ supporting both resting state and therapy tasks.
 
 import logging
 from pathlib import Path
-from typing import Dict, Optional, Union, Union
+from typing import Dict, Optional, Union
 
 import pandas as pd
 

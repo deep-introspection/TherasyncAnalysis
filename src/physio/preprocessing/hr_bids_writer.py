@@ -8,7 +8,6 @@ Authors: Lena Adel, Remy Ramadour
 """
 
 import logging
-import os
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any, Optional, List, Union

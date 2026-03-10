@@ -13,7 +13,6 @@ from typing import Dict, Tuple, Optional, Union
 
 import pandas as pd
 import numpy as np
-from scipy import interpolate
 
 from src.core.config_loader import ConfigLoader
 

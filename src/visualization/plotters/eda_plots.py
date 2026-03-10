@@ -10,7 +10,6 @@ Date: November 2025
 """
 
 import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
 import numpy as np
 from typing import Dict, Optional
 from pathlib import Path

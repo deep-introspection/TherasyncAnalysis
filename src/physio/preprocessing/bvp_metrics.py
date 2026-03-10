@@ -81,7 +81,7 @@ class BVPMetricsExtractor:
                 sampling_rate = processing_info.get('sampling_rate', 64)
                 
                 # Validate peaks for HRV analysis
-                if not self._validate_peaks_for_hrv(peaks, moment):
+                if not self._validate_peaks_for_hrv(peaks, sampling_rate, moment):
                     logger.warning(f"Skipping HRV analysis for {moment}: insufficient peaks")
                     session_metrics[moment] = self._get_empty_metrics_dict()
                     continue
@@ -334,15 +334,17 @@ class BVPMetricsExtractor:
         return quality_metrics
     
     def _validate_peaks_for_hrv(
-        self, 
-        peaks: Union[List, np.ndarray], 
+        self,
+        peaks: Union[List, np.ndarray],
+        sampling_rate: int,
         moment: str
     ) -> bool:
         """
         Validate that peaks are sufficient for HRV analysis.
-        
+
         Args:
             peaks: Array of peak indices
+            sampling_rate: Sampling rate in Hz
             moment: Moment name for logging
             
         Returns:
@@ -357,7 +359,7 @@ class BVPMetricsExtractor:
         if len(peaks_array) > 1:
             intervals = np.diff(peaks_array)
             # Check for very short intervals (< 200ms at 64Hz = 12.8 samples)
-            min_interval = 0.2 * 64  # 200ms in samples
+            min_interval = 0.2 * sampling_rate  # 200ms in samples
             if np.any(intervals < min_interval):
                 short_intervals = np.sum(intervals < min_interval)
                 logger.warning(

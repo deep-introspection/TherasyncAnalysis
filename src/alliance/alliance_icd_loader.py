@@ -12,7 +12,6 @@ import ast
 import logging
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Union
-from collections import defaultdict
 
 import numpy as np
 import pandas as pd

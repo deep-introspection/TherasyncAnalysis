@@ -6,7 +6,7 @@ Create PNG frames for Poincaré plot animations showing temporal evolution
 of dyadic synchrony. Each frame shows current epoch with cumulative traces.
 
 Usage:
-    poetry run python scripts/physio/dppa/generate_epoch_frames.py \\
+    uv run python scripts/physio/dppa/generate_epoch_frames.py \\
         --dyad g01p01_ses-01_vs_g01p02_ses-01 \\
         --method sliding_duration30s_step5s \\
         --task therapy
@@ -161,7 +161,7 @@ def create_frame(
         ax_poincare.scatter(
             poincare_data_2['rr_n'],
             poincare_data_2['rr_n_plus_1'],
-            c=colors.get('subject2', '#ff7g0e'),
+            c=colors.get('subject2', '#ff7f0e'),
             s=20,
             alpha=0.6,
             marker='s',
@@ -188,7 +188,7 @@ def create_frame(
             centroid_params_2['sd1'],
             centroid_params_2['sd2'],
             centroid_params_2['angle'],
-            color=colors.get('subject2', '#ff7g0e')
+            color=colors.get('subject2', '#ff7f0e')
         )
     
     # Draw ICD line
@@ -221,7 +221,7 @@ def create_frame(
             marker='x',
             s=200,
             linewidths=3,
-            color=colors.get('subject2', '#ff7g0e'),
+            color=colors.get('subject2', '#ff7f0e'),
             zorder=10,
             label=f'{subject2} centroid'
         )
@@ -285,13 +285,13 @@ def create_frame(
     
     ax_centroids.plot(times, centroid_avg_1, color=colors.get('subject1', '#1f77b4'),
                       linewidth=2, label=subject1, alpha=0.8)
-    ax_centroids.plot(times, centroid_avg_2, color=colors.get('subject2', '#ff7g0e'),
+    ax_centroids.plot(times, centroid_avg_2, color=colors.get('subject2', '#ff7f0e'),
                       linewidth=2, label=subject2, alpha=0.8)
     ax_centroids.scatter([time_min], [centroid_avg_1[-1]], 
                         color=colors.get('subject1', '#1f77b4'), s=80, zorder=10,
                         edgecolors='darkblue', linewidths=2)
     ax_centroids.scatter([time_min], [centroid_avg_2[-1]], 
-                        color=colors.get('subject2', '#ff7g0e'), s=80, zorder=10,
+                        color=colors.get('subject2', '#ff7f0e'), s=80, zorder=10,
                         edgecolors='darkorange', linewidths=2)
     ax_centroids.grid(True, alpha=0.2)
     ax_centroids.legend(loc='best', fontsize=9)
@@ -309,13 +309,13 @@ def create_frame(
     
     ax_ratios.plot(times, ratio_1, color=colors.get('subject1', '#1f77b4'),
                    linewidth=2, label=subject1, alpha=0.8)
-    ax_ratios.plot(times, ratio_2, color=colors.get('subject2', '#ff7g0e'),
+    ax_ratios.plot(times, ratio_2, color=colors.get('subject2', '#ff7f0e'),
                    linewidth=2, label=subject2, alpha=0.8)
     ax_ratios.scatter([time_min], [ratio_1[-1]], 
                      color=colors.get('subject1', '#1f77b4'), s=80, zorder=10,
                      edgecolors='darkblue', linewidths=2)
     ax_ratios.scatter([time_min], [ratio_2[-1]], 
-                     color=colors.get('subject2', '#ff7g0e'), s=80, zorder=10,
+                     color=colors.get('subject2', '#ff7f0e'), s=80, zorder=10,
                      edgecolors='darkorange', linewidths=2)
     ax_ratios.grid(True, alpha=0.2)
     ax_ratios.legend(loc='best', fontsize=9)

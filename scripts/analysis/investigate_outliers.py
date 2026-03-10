@@ -11,9 +11,9 @@ This script performs Phase 2 of the preprocessing artifacts investigation:
 Phase 2 of preprocessing artifacts investigation (PREPROCESSING_ISSUES.md).
 
 Usage:
-    poetry run python scripts/analysis/investigate_outliers.py
-    poetry run python scripts/analysis/investigate_outliers.py --sessions sub-g03p03/ses-01 sub-g04p04/ses-03
-    poetry run python scripts/analysis/investigate_outliers.py --top-n 5 --verbose
+    uv run python scripts/analysis/investigate_outliers.py
+    uv run python scripts/analysis/investigate_outliers.py --sessions sub-g03p03/ses-01 sub-g04p04/ses-03
+    uv run python scripts/analysis/investigate_outliers.py --top-n 5 --verbose
 
 Author: TherasyncPipeline Team
 Date: November 11, 2025
@@ -196,8 +196,6 @@ def create_bvp_diagnostic_plot(subject: str, session: str, bvp_signals: Dict,
         ax = axes[1, col_idx]
         if f'{moment}_processed' in bvp_signals:
             df = bvp_signals[f'{moment}_processed']
-            # Check for PPG_Rate (new naming) or Heart_Rate (legacy)
-            hr_col = 'PPG_Rate' if 'PPG_Rate' in df.columns else 'Heart_Rate' if 'Heart_Rate' in df.columns else None
             # Check for PPG_Rate (new naming) or Heart_Rate (legacy)
             hr_col = 'PPG_Rate' if 'PPG_Rate' in df.columns else 'Heart_Rate' if 'Heart_Rate' in df.columns else None
             if hr_col:
@@ -492,13 +490,13 @@ def main():
         epilog="""
 Examples:
     # Investigate top 3 worst cases
-    poetry run python scripts/analysis/investigate_outliers.py --top-n 3
+    uv run python scripts/analysis/investigate_outliers.py --top-n 3
     
     # Investigate specific sessions
-    poetry run python scripts/analysis/investigate_outliers.py --sessions sub-g03p03/ses-01 sub-g04p04/ses-03
+    uv run python scripts/analysis/investigate_outliers.py --sessions sub-g03p03/ses-01 sub-g04p04/ses-03
     
     # Verbose output
-    poetry run python scripts/analysis/investigate_outliers.py --top-n 5 --verbose
+    uv run python scripts/analysis/investigate_outliers.py --top-n 5 --verbose
         """
     )
     

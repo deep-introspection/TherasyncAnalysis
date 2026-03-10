@@ -374,11 +374,11 @@ class TestBVPMetricsExtractor(unittest.TestCase):
         
         # Test insufficient peaks
         few_peaks = [64, 128]
-        self.assertFalse(extractor._validate_peaks_for_hrv(few_peaks, "test"))
-        
+        self.assertFalse(extractor._validate_peaks_for_hrv(few_peaks, 64, "test"))
+
         # Test sufficient peaks (need at least 10)
         enough_peaks = list(range(64, 704, 64))  # 10 peaks: 64 to 640
-        self.assertTrue(extractor._validate_peaks_for_hrv(enough_peaks, "test"))
+        self.assertTrue(extractor._validate_peaks_for_hrv(enough_peaks, 64, "test"))
     
     @patch('src.physio.preprocessing.bvp_metrics.ConfigLoader')
     def test_session_metrics_extraction(self, mock_config):
