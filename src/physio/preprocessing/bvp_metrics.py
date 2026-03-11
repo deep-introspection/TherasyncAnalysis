@@ -52,6 +52,11 @@ class BVPMetricsExtractor:
         self.epoched_config = self.metrics_config.get("epoched_analysis", {})
         self.epoched_enabled = self.epoched_config.get("enabled", False)
 
+        # Minimum duration for frequency-domain HRV (Task Force 1996: >=2 min)
+        self.min_duration_freq = self.metrics_config.get(
+            "min_duration_frequency_domain", 120
+        )
+
         logger.info(
             f"BVP Metrics Extractor initialized: "
             f"{len(self.time_domain_metrics)} time-domain, "
@@ -230,26 +235,37 @@ class BVPMetricsExtractor:
                         )
                         metrics[metric] = np.nan
 
-            # Extract frequency-domain metrics
+            # Extract frequency-domain metrics (gated on epoch duration)
             if self.frequency_domain_metrics:
-                try:
-                    freq_metrics = nk.hrv_frequency(
-                        synthetic_peaks, sampling_rate=sampling_rate
-                    )
-                    for metric in self.frequency_domain_metrics:
-                        if metric in freq_metrics.columns:
-                            metrics[metric] = float(freq_metrics[metric].iloc[0])
-                        else:
-                            logger.warning(
-                                f"Frequency-domain metric {metric} not found for {moment}"
-                            )
-                            metrics[metric] = np.nan
-                except Exception as e:
+                duration_s = valid_rr_ms.sum() / 1000.0
+                if duration_s < self.min_duration_freq:
                     logger.warning(
-                        f"Frequency-domain analysis failed for {moment}: {e}"
+                        f"Epoch duration {duration_s:.1f}s < {self.min_duration_freq}s "
+                        f"minimum for frequency-domain HRV in {moment}; "
+                        f"setting LF/HF metrics to NaN"
                     )
                     for metric in self.frequency_domain_metrics:
                         metrics[metric] = np.nan
+                else:
+                    try:
+                        freq_metrics = nk.hrv_frequency(
+                            synthetic_peaks, sampling_rate=sampling_rate
+                        )
+                        for metric in self.frequency_domain_metrics:
+                            if metric in freq_metrics.columns:
+                                metrics[metric] = float(freq_metrics[metric].iloc[0])
+                            else:
+                                logger.warning(
+                                    f"Frequency-domain metric {metric} not found "
+                                    f"for {moment}"
+                                )
+                                metrics[metric] = np.nan
+                    except Exception as e:
+                        logger.warning(
+                            f"Frequency-domain analysis failed for {moment}: {e}"
+                        )
+                        for metric in self.frequency_domain_metrics:
+                            metrics[metric] = np.nan
 
             # Extract nonlinear metrics
             if self.nonlinear_metrics:
