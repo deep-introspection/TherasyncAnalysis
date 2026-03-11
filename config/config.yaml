@@ -58,7 +58,7 @@ physio:
       method_quality: "templatematch"  # Quality assessment method
       lowcut_freq: 0.5   # Hz - for additional filtering if needed
       highcut_freq: 8.0  # Hz - for additional filtering if needed
-      quality_threshold: 0.8  # Minimum quality for accepting peaks (0-1 scale)
+      quality_threshold: 0.8  # Warning threshold for peak quality (0-1 scale)
                               # Note: Longer recordings (>30 min) often have lower scores (0.65-0.75) but remain usable
       min_duration: 10       # seconds - minimum signal duration for meaningful analysis
     
@@ -72,6 +72,7 @@ physio:
     
     metrics:
       extract_all: false
+      min_duration_frequency_domain: 120  # seconds - minimum epoch duration for frequency-domain HRV (Task Force 1996)
       selected_metrics:
         # Essential Set - Time Domain (5 metrics)
         time_domain:
@@ -222,6 +223,11 @@ batch:
   validate_durations: true
   duration_tolerance: 5.0  # seconds - max difference allowed between modalities
   
+# Statistical analysis configuration
+statistics:
+  multiple_comparison_correction: "fdr_bh"  # Method for p-value correction (bonferroni, holm, fdr_bh)
+  min_poincare_pairs: 20  # Minimum Poincaré pairs for reliable metrics
+
 # Logging configuration
 logging:
   level: "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
