@@ -176,28 +176,39 @@ class DyadICDLoader:
         if "epoch_id" not in df.columns:
             raise ValueError(f"Missing 'epoch_id' column in {icd_file}")
 
-        # Try original dyad_pair, then try reversed order (ICD is symmetric)
+        # Try original dyad_pair, then alternative column formats (ICD is symmetric)
         actual_dyad_pair = dyad_pair
-        if dyad_pair not in df.columns:
-            # Try reversed order: "A_vs_B" -> "B_vs_A"
-            if "_vs_" in dyad_pair:
-                parts = dyad_pair.split("_vs_")
-                reversed_pair = f"{parts[1]}_vs_{parts[0]}"
-                if reversed_pair in df.columns:
-                    actual_dyad_pair = reversed_pair
+        if dyad_pair not in df.columns and "_vs_" in dyad_pair:
+            info = self.parse_dyad_info(dyad_pair)
+            # Build candidate column names in all possible formats
+            candidates = [
+                # Reversed: "sub2_ses-YY_vs_sub1_ses-XX"
+                f"{info['sub2']}_ses-{info['ses2']}_vs_{info['sub1']}_ses-{info['ses1']}",
+                # Intra-family format: "sub1_vs_sub2_ses-XX"
+                f"{info['sub1']}_vs_{info['sub2']}_ses-{info['ses1']}",
+                # Intra-family reversed: "sub2_vs_sub1_ses-XX"
+                f"{info['sub2']}_vs_{info['sub1']}_ses-{info['ses1']}",
+            ]
+            matched = False
+            for candidate in candidates:
+                if candidate in df.columns:
+                    actual_dyad_pair = candidate
                     logger.debug(
-                        f"Dyad pair '{dyad_pair}' not found, using reversed: '{reversed_pair}'"
+                        f"Dyad pair '{dyad_pair}' not found, using: '{candidate}'"
                     )
-                else:
-                    raise ValueError(
-                        f"Dyad pair '{dyad_pair}' (nor reversed '{reversed_pair}') not found in {icd_file}. "
-                        f"Available columns: {list(df.columns)}"
-                    )
-            else:
+                    matched = True
+                    break
+            if not matched:
                 raise ValueError(
                     f"Dyad pair '{dyad_pair}' not found in {icd_file}. "
+                    f"Tried: {candidates}. "
                     f"Available columns: {list(df.columns)}"
                 )
+        elif dyad_pair not in df.columns:
+            raise ValueError(
+                f"Dyad pair '{dyad_pair}' not found in {icd_file}. "
+                f"Available columns: {list(df.columns)}"
+            )
 
         # Extract relevant columns and rename
         result = df[["epoch_id", actual_dyad_pair]].copy()
