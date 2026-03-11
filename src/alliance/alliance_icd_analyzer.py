@@ -9,14 +9,18 @@ Date: November 2025
 """
 
 import logging
+import warnings
 from pathlib import Path
 from typing import Dict, Optional, Union
 
+import numpy as np
 import pandas as pd
+import statsmodels.formula.api as smf
 from scipy import stats
 
 from src.core.config_loader import ConfigLoader
 from src.alliance.alliance_icd_loader import AllianceICDLoader
+from src.stats.corrections import compute_icc, correct_pvalues, epsilon_squared
 
 logger = logging.getLogger(__name__)
 
@@ -114,8 +118,20 @@ class AllianceICDAnalyzer:
     def test_alliance_effect(
         self, data: Optional[pd.DataFrame] = None, test_type: str = "kruskal"
     ) -> Dict:
+        """Deprecated: use test_alliance_effect_mixed(). Naive epoch-level test."""
+        warnings.warn(
+            "test_alliance_effect treats epochs as independent. "
+            "Use test_alliance_effect_mixed() for correct inference.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.test_alliance_effect_naive(data, test_type)
+
+    def test_alliance_effect_naive(
+        self, data: Optional[pd.DataFrame] = None, test_type: str = "kruskal"
+    ) -> Dict:
         """
-        Test if alliance state has significant effect on ICD.
+        Naive epoch-level test (ignores nesting structure).
 
         Args:
             data: DataFrame with merged data
@@ -159,8 +175,132 @@ class AllianceICDAnalyzer:
             "significant": p_value < 0.05,
         }
 
+    def test_alliance_effect_mixed(self, data: Optional[pd.DataFrame] = None) -> Dict:
+        """
+        Test alliance effect using linear mixed-effects model.
+
+        Model: icd ~ C(alliance_state) with random intercepts for family and dyad.
+        Accounts for the nesting structure (epochs within dyads within families).
+
+        Args:
+            data: DataFrame with merged data
+
+        Returns:
+            Dict with coefficients, p-values, ICC, marginal R².
+        """
+        if data is None:
+            data = self.load_data()
+
+        if data.empty:
+            return {"error": "No data available"}
+
+        required_cols = {"icd", "alliance_state", "family", "dyad"}
+        if not required_cols.issubset(data.columns):
+            return {"error": f"Missing columns: {required_cols - set(data.columns)}"}
+
+        df = data.dropna(subset=["icd", "alliance_state"]).copy()
+        df["alliance_state"] = df["alliance_state"].astype(str)
+
+        try:
+            model = smf.mixedlm(
+                "icd ~ C(alliance_state)",
+                data=df,
+                groups="family",
+                re_formula="1",
+                vc_formula={"dyad": "0 + C(dyad)"},
+            )
+            result = model.fit(reml=True)
+        except Exception as e:
+            logger.warning(f"Mixed model failed: {e}")
+            return {"error": str(e)}
+
+        # Extract fixed effects
+        coefficients = result.fe_params.to_dict()
+        p_values = result.pvalues.to_dict()
+
+        # Marginal R²: variance explained by fixed effects / total variance
+        var_fixed = np.var(result.predict(df))
+        var_total = np.var(df["icd"])
+        marginal_r2 = float(var_fixed / var_total) if var_total > 0 else np.nan
+
+        # ICC at family and dyad levels
+        icc_family = compute_icc(df, "family", "icd")
+        icc_dyad = compute_icc(df, "dyad", "icd")
+
+        return {
+            "test": "Linear Mixed-Effects Model",
+            "formula": "icd ~ C(alliance_state) | (1|family) + (1|dyad)",
+            "coefficients": coefficients,
+            "p_values": p_values,
+            "marginal_r2": marginal_r2,
+            "icc_family": icc_family,
+            "icc_dyad": icc_dyad,
+            "n_observations": len(df),
+            "n_families": df["family"].nunique(),
+            "n_dyads": df["dyad"].nunique(),
+            "aic": float(result.aic),
+            "bic": float(result.bic),
+        }
+
+    def compute_effect_sizes(self, data: Optional[pd.DataFrame] = None) -> Dict:
+        """
+        Compute effect sizes for alliance effect on ICD.
+
+        Returns epsilon-squared from Kruskal-Wallis H statistic.
+
+        Args:
+            data: DataFrame with merged data
+
+        Returns:
+            Dict with effect size measures.
+        """
+        if data is None:
+            data = self.load_data()
+
+        if data.empty:
+            return {"error": "No data available"}
+
+        naive_result = self.test_alliance_effect_naive(data)
+        if "error" in naive_result:
+            return naive_result
+
+        h_stat = naive_result["statistic"]
+        n_total = sum(naive_result["n_per_group"])
+        k_groups = len(naive_result["groups"])
+
+        return {
+            "epsilon_squared": epsilon_squared(h_stat, n_total, k_groups),
+            "h_statistic": h_stat,
+            "n_total": n_total,
+            "k_groups": k_groups,
+        }
+
+    def compute_icc_structure(self, data: Optional[pd.DataFrame] = None) -> Dict:
+        """
+        Compute ICC at family and dyad levels.
+
+        Args:
+            data: DataFrame with merged data
+
+        Returns:
+            Dict with ICC values at each nesting level.
+        """
+        if data is None:
+            data = self.load_data()
+
+        if data.empty:
+            return {"error": "No data available"}
+
+        return {
+            "icc_family": compute_icc(data, "family", "icd"),
+            "icc_dyad": compute_icc(data, "dyad", "icd"),
+            "n_families": data["family"].nunique(),
+            "n_dyads": data["dyad"].nunique(),
+            "n_observations": len(data),
+        }
+
     def pairwise_comparisons(
-        self, data: Optional[pd.DataFrame] = None, correction: str = "bonferroni"
+        self, data: Optional[pd.DataFrame] = None, correction: str = "fdr_bh"
     ) -> pd.DataFrame:
         """
         Perform pairwise Mann-Whitney U tests between alliance states.
@@ -168,6 +308,7 @@ class AllianceICDAnalyzer:
         Args:
             data: DataFrame with merged data
             correction: Multiple comparison correction method
+                ('bonferroni', 'holm', 'fdr_bh')
 
         Returns:
             DataFrame with pairwise test results
@@ -185,7 +326,6 @@ class AllianceICDAnalyzer:
                 states_with_data.append(state)
 
         results = []
-        comparisons = []
 
         for i, state1 in enumerate(states_with_data):
             for state2 in states_with_data[i + 1 :]:
@@ -210,23 +350,52 @@ class AllianceICDAnalyzer:
                         "mean_diff": g1.mean() - g2.mean(),
                     }
                 )
-                comparisons.append((state1, state2))
 
         df = pd.DataFrame(results)
 
-        if not df.empty and correction == "bonferroni":
-            n_comparisons = len(df)
-            df["p_adjusted"] = df["p_value"] * n_comparisons
-            df["p_adjusted"] = df["p_adjusted"].clip(upper=1.0)
-            df["significant"] = df["p_adjusted"] < 0.05
+        if not df.empty:
+            rejected, p_adjusted = correct_pvalues(
+                df["p_value"].values, method=correction
+            )
+            df["p_adjusted"] = p_adjusted
+            df["significant"] = rejected
+            df["correction_method"] = correction
 
         return df
+
+    @staticmethod
+    def _extract_participants_from_dyad(dyad_name: str) -> tuple[str, str]:
+        """
+        Parse dyad column name into participant IDs.
+
+        Args:
+            dyad_name: e.g. "g01p02_ses-01_vs_g01p01_ses-01"
+
+        Returns:
+            Tuple of (participant1, participant2), e.g. ("g01p02", "g01p01")
+        """
+        parts = dyad_name.split("_vs_")
+        p1 = parts[0].split("_ses-")[0]
+        p2 = parts[1].split("_ses-")[0]
+        return p1, p2
 
     def compare_real_vs_pseudo(
         self, data: Optional[pd.DataFrame] = None, by_alliance: bool = True
     ) -> Dict:
+        """Deprecated: use compare_real_vs_pseudo_mixed(). Naive epoch-level test."""
+        warnings.warn(
+            "compare_real_vs_pseudo treats epochs as independent. "
+            "Use compare_real_vs_pseudo_mixed() for correct inference.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.compare_real_vs_pseudo_naive(data, by_alliance)
+
+    def compare_real_vs_pseudo_naive(
+        self, data: Optional[pd.DataFrame] = None, by_alliance: bool = True
+    ) -> Dict:
         """
-        Compare ICD between real and pseudo dyads.
+        Naive epoch-level comparison of real vs pseudo dyads (ignores nesting).
 
         Args:
             data: DataFrame with merged data
@@ -284,6 +453,167 @@ class AllianceICDAnalyzer:
 
         return results
 
+    def compare_real_vs_pseudo_mixed(
+        self, data: Optional[pd.DataFrame] = None, by_alliance: bool = False
+    ) -> Dict:
+        """
+        Compare real vs pseudo dyads using mixed-effects model.
+
+        Model: icd ~ is_real + (1 | participant)
+        Accounts for participants appearing in multiple dyads.
+
+        Args:
+            data: DataFrame with merged data
+            by_alliance: If True, fit separate models per alliance state
+
+        Returns:
+            Dict with coefficient, p-value, CI, ICC, participant count.
+        """
+        if data is None:
+            data = self.load_data()
+
+        if data.empty:
+            return {"error": "No data available"}
+
+        if by_alliance:
+            results = {}
+            for state in [0, 1, -1, 2]:
+                subset = data[data["alliance_state"] == state]
+                if len(subset) > 0:
+                    results[self.ALLIANCE_LABELS[state]] = (
+                        self._fit_real_vs_pseudo_mixed(subset)
+                    )
+            return results
+
+        return self._fit_real_vs_pseudo_mixed(data)
+
+    def _fit_real_vs_pseudo_mixed(self, df: pd.DataFrame) -> Dict:
+        """Fit a single mixed model for real vs pseudo comparison."""
+        df = df.dropna(subset=["icd"]).copy()
+        df["is_real"] = (df["dyad_type"] == "real").astype(int)
+
+        # Extract participant IDs and explode to one row per participant
+        records = []
+        for _, row in df.iterrows():
+            try:
+                p1, p2 = self._extract_participants_from_dyad(row["dyad"])
+            except (IndexError, KeyError):
+                continue
+            for pid in (p1, p2):
+                records.append(
+                    {"icd": row["icd"], "is_real": row["is_real"], "participant": pid}
+                )
+
+        if len(records) < 4:
+            return {"error": "Too few observations for mixed model"}
+
+        model_df = pd.DataFrame(records)
+        n_participants = model_df["participant"].nunique()
+
+        if n_participants < 2:
+            return {"error": "Need at least 2 participants"}
+
+        try:
+            model = smf.mixedlm("icd ~ is_real", data=model_df, groups="participant")
+            result = model.fit(reml=True)
+        except Exception as e:
+            logger.warning(f"Real-vs-pseudo mixed model failed: {e}")
+            return {"error": str(e)}
+
+        coef = float(result.params["is_real"])
+        se = float(result.bse["is_real"])
+        p_value = float(result.pvalues["is_real"])
+        ci_lower = coef - 1.96 * se
+        ci_upper = coef + 1.96 * se
+
+        re_var = (
+            float(result.cov_re.iloc[0, 0]) if hasattr(result, "cov_re") else np.nan
+        )
+        resid_var = float(result.scale)
+        icc = re_var / (re_var + resid_var) if (re_var + resid_var) > 0 else 0.0
+
+        return {
+            "test": "Linear Mixed-Effects Model",
+            "formula": "icd ~ is_real + (1 | participant)",
+            "coefficient": coef,
+            "se": se,
+            "p_value": p_value,
+            "ci_lower": ci_lower,
+            "ci_upper": ci_upper,
+            "icc_participant": float(icc),
+            "n_observations": len(model_df),
+            "n_participants": n_participants,
+            "significant": p_value < 0.05,
+        }
+
+    def compare_real_vs_pseudo_aggregated(
+        self, data: Optional[pd.DataFrame] = None
+    ) -> Dict:
+        """
+        Compare real vs pseudo dyads using participant-level aggregation.
+
+        Aggregates mean ICD per participant for real and pseudo dyads,
+        then runs Wilcoxon signed-rank on paired participant means.
+        Fallback when mixed model can't converge.
+
+        Args:
+            data: DataFrame with merged data
+
+        Returns:
+            Dict with n_participants, Wilcoxon stat/p, paired Cohen's d.
+        """
+        if data is None:
+            data = self.load_data()
+
+        if data.empty:
+            return {"error": "No data available"}
+
+        # Collect ICD values per participant per dyad type
+        participant_real: dict[str, list[float]] = {}
+        participant_pseudo: dict[str, list[float]] = {}
+
+        for _, row in data.iterrows():
+            try:
+                p1, p2 = self._extract_participants_from_dyad(row["dyad"])
+            except (IndexError, KeyError):
+                continue
+
+            target = (
+                participant_real if row["dyad_type"] == "real" else participant_pseudo
+            )
+            for pid in (p1, p2):
+                target.setdefault(pid, []).append(row["icd"])
+
+        real_means = {p: np.mean(v) for p, v in participant_real.items()}
+        pseudo_means = {p: np.mean(v) for p, v in participant_pseudo.items()}
+
+        common = sorted(set(real_means) & set(pseudo_means))
+        if len(common) < 2:
+            return {"error": f"Need >=2 paired participants, found {len(common)}"}
+
+        real_arr = np.array([real_means[p] for p in common])
+        pseudo_arr = np.array([pseudo_means[p] for p in common])
+
+        try:
+            w_stat, p_wilcoxon = stats.wilcoxon(real_arr, pseudo_arr)
+        except ValueError:
+            w_stat, p_wilcoxon = np.nan, 1.0
+
+        diff = real_arr - pseudo_arr
+        diff_std = np.std(diff, ddof=1)
+        cohens_d = float(np.mean(diff) / diff_std) if diff_std > 0 else 0.0
+
+        return {
+            "test": "Wilcoxon signed-rank (participant-aggregated)",
+            "n_participants": len(common),
+            "mean_real": float(np.mean(real_arr)),
+            "mean_pseudo": float(np.mean(pseudo_arr)),
+            "W_statistic": float(w_stat),
+            "p_value": float(p_wilcoxon),
+            "cohens_d_paired": cohens_d,
+            "significant": p_wilcoxon < 0.05,
+        }
+
     def compute_session_level_stats(
         self, data: Optional[pd.DataFrame] = None
     ) -> pd.DataFrame:
@@ -337,7 +667,29 @@ class AllianceICDAnalyzer:
             "n_dyads",
         ]
 
-        return session_stats.reset_index()
+        session_stats = session_stats.reset_index()
+
+        # Kruskal-Wallis on dyad-level means (correct degrees of freedom)
+        groups = []
+        for label in dyad_stats["alliance_label"].unique():
+            group_means = dyad_stats.loc[
+                dyad_stats["alliance_label"] == label, "mean_icd"
+            ].values
+            if len(group_means) > 0:
+                groups.append(group_means)
+
+        if len(groups) >= 2:
+            h_stat, p_val = stats.kruskal(*groups)
+            n_total = sum(len(g) for g in groups)
+            session_stats.attrs["kruskal_dyad_level"] = {
+                "H": float(h_stat),
+                "p_value": float(p_val),
+                "n_dyads": n_total,
+                "k_groups": len(groups),
+                "epsilon_squared": epsilon_squared(h_stat, n_total, len(groups)),
+            }
+
+        return session_stats
 
     def generate_report(
         self, data: Optional[pd.DataFrame] = None, output_path: Optional[Path] = None
@@ -375,6 +727,16 @@ class AllianceICDAnalyzer:
         lines.append(f"Families: {sorted(data['family'].unique())}")
         lines.append("")
 
+        # ICC structure
+        lines.append("INTRACLASS CORRELATION (ICC)")
+        lines.append("-" * 40)
+        icc = self.compute_icc_structure(data)
+        if "error" not in icc:
+            lines.append(f"ICC(family): {icc['icc_family']:.4f}")
+            lines.append(f"ICC(dyad):   {icc['icc_dyad']:.4f}")
+            lines.append(f"N families: {icc['n_families']}, N dyads: {icc['n_dyads']}")
+        lines.append("")
+
         # Descriptive stats
         lines.append("DESCRIPTIVE STATISTICS BY ALLIANCE STATE")
         lines.append("-" * 40)
@@ -382,14 +744,51 @@ class AllianceICDAnalyzer:
         lines.append(desc_stats.to_string())
         lines.append("")
 
-        # Overall test
-        lines.append("OVERALL ALLIANCE EFFECT TEST")
+        # PRIMARY: Mixed-effects model
+        lines.append("PRIMARY ANALYSIS: LINEAR MIXED-EFFECTS MODEL")
         lines.append("-" * 40)
-        test_result = self.test_alliance_effect(data)
-        lines.append(f"Test: {test_result.get('test', 'N/A')}")
+        mixed_result = self.test_alliance_effect_mixed(data)
+        if "error" not in mixed_result:
+            lines.append(f"Formula: {mixed_result['formula']}")
+            lines.append(
+                f"N obs: {mixed_result['n_observations']}, "
+                f"N families: {mixed_result['n_families']}, "
+                f"N dyads: {mixed_result['n_dyads']}"
+            )
+            lines.append(
+                f"AIC: {mixed_result['aic']:.1f}, BIC: {mixed_result['bic']:.1f}"
+            )
+            lines.append(f"Marginal R²: {mixed_result['marginal_r2']:.4f}")
+            lines.append("Fixed effects:")
+            for coef, val in mixed_result["coefficients"].items():
+                p = mixed_result["p_values"].get(coef, np.nan)
+                lines.append(f"  {coef}: β={val:.4f}, p={p:.6f}")
+        else:
+            lines.append(f"Mixed model failed: {mixed_result['error']}")
+        lines.append("")
+
+        # Effect sizes
+        lines.append("EFFECT SIZES")
+        lines.append("-" * 40)
+        effects = self.compute_effect_sizes(data)
+        if "error" not in effects:
+            lines.append(f"Epsilon²: {effects['epsilon_squared']:.4f}")
+            lines.append(
+                f"(H={effects['h_statistic']:.2f}, "
+                f"n={effects['n_total']}, k={effects['k_groups']})"
+            )
+        lines.append("")
+
+        # SECONDARY: Naive Kruskal-Wallis
+        lines.append("SECONDARY ANALYSIS: NAIVE KRUSKAL-WALLIS (epoch-level)")
+        lines.append("-" * 40)
+        lines.append(
+            "NOTE: Treats epochs as independent; p-values are anti-conservative"
+        )
+        test_result = self.test_alliance_effect_naive(data)
         stat_val = test_result.get("statistic", "N/A")
         lines.append(
-            f"Statistic: {stat_val:.4f}"
+            f"H-statistic: {stat_val:.4f}"
             if isinstance(stat_val, (int, float))
             else f"Statistic: {stat_val}"
         )
@@ -399,23 +798,66 @@ class AllianceICDAnalyzer:
             if isinstance(p_val, (int, float))
             else f"p-value: {p_val}"
         )
-        lines.append(f"Significant (α=0.05): {test_result.get('significant', 'N/A')}")
         lines.append("")
 
         # Pairwise comparisons
-        lines.append("PAIRWISE COMPARISONS (Bonferroni-corrected)")
+        lines.append("PAIRWISE COMPARISONS (FDR-corrected)")
         lines.append("-" * 40)
         pairwise = self.pairwise_comparisons(data)
         if not pairwise.empty:
             lines.append(pairwise.to_string(index=False))
         lines.append("")
 
-        # Real vs Pseudo
+        # Real vs Pseudo — Primary: mixed model
         lines.append("REAL vs PSEUDO-DYAD COMPARISON")
+        lines.append("=" * 40)
+
+        lines.append("")
+        lines.append("PRIMARY: LINEAR MIXED-EFFECTS MODEL")
         lines.append("-" * 40)
-        comparison = self.compare_real_vs_pseudo(data, by_alliance=False)
-        if "overall" in comparison:
-            c = comparison["overall"]
+        mixed_rp = self.compare_real_vs_pseudo_mixed(data, by_alliance=False)
+        if "error" not in mixed_rp:
+            lines.append(f"Formula: {mixed_rp['formula']}")
+            lines.append(
+                f"N obs: {mixed_rp['n_observations']}, "
+                f"N participants: {mixed_rp['n_participants']}"
+            )
+            lines.append(
+                f"Coefficient (is_real): {mixed_rp['coefficient']:.4f} "
+                f"(95% CI: [{mixed_rp['ci_lower']:.4f}, {mixed_rp['ci_upper']:.4f}])"
+            )
+            lines.append(f"p-value: {mixed_rp['p_value']:.6f}")
+            lines.append(f"ICC(participant): {mixed_rp['icc_participant']:.4f}")
+        else:
+            lines.append(f"Mixed model failed: {mixed_rp['error']}")
+        lines.append("")
+
+        # Real vs Pseudo — Secondary: participant-aggregated
+        lines.append("SECONDARY: PARTICIPANT-AGGREGATED WILCOXON")
+        lines.append("-" * 40)
+        agg_rp = self.compare_real_vs_pseudo_aggregated(data)
+        if "error" not in agg_rp:
+            lines.append(f"N participants (paired): {agg_rp['n_participants']}")
+            lines.append(
+                f"Mean real: {agg_rp['mean_real']:.4f}, "
+                f"Mean pseudo: {agg_rp['mean_pseudo']:.4f}"
+            )
+            lines.append(f"Wilcoxon W: {agg_rp['W_statistic']:.2f}")
+            lines.append(f"p-value: {agg_rp['p_value']:.6f}")
+            lines.append(f"Cohen's d (paired): {agg_rp['cohens_d_paired']:.4f}")
+        else:
+            lines.append(f"Aggregated test failed: {agg_rp['error']}")
+        lines.append("")
+
+        # Real vs Pseudo — Tertiary: naive Mann-Whitney
+        lines.append("TERTIARY: NAIVE MANN-WHITNEY U (epoch-level)")
+        lines.append("-" * 40)
+        lines.append(
+            "NOTE: Treats epochs as independent; p-values are anti-conservative"
+        )
+        naive_rp = self.compare_real_vs_pseudo_naive(data, by_alliance=False)
+        if "overall" in naive_rp:
+            c = naive_rp["overall"]
             lines.append(
                 f"Real dyads - Mean ICD: {c['mean_real']:.4f} (n={c['n_real']})"
             )
@@ -424,7 +866,6 @@ class AllianceICDAnalyzer:
             )
             lines.append(f"Mann-Whitney U: {c['U_statistic']:.2f}")
             lines.append(f"p-value: {c['p_value']:.6f}")
-            lines.append(f"Significant: {c['significant']}")
         lines.append("")
 
         # By dyad type

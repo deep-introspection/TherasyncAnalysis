@@ -10,6 +10,8 @@ Authors: Remy Ramadour
 Date: November 2025
 """
 
+import warnings
+
 import pytest
 import pandas as pd
 import numpy as np
@@ -115,37 +117,51 @@ class TestAllianceICDAnalyzer:
 
     @pytest.fixture
     def sample_data(self):
-        """Create sample merged data for testing."""
+        """Create sample merged data with participant-identifiable dyad names."""
         np.random.seed(42)
 
-        data = []
+        # Participants: g01p01..g01p06 (6 participants, various pairings)
+        real_dyads = [
+            ("g01p01", "g01p02"),
+            ("g01p03", "g01p04"),
+            ("g01p05", "g01p06"),
+        ]
+        pseudo_dyads = [
+            ("g01p01", "g01p04"),
+            ("g01p02", "g01p05"),
+            ("g01p03", "g01p06"),
+            ("g01p01", "g01p06"),
+            ("g01p02", "g01p03"),
+            ("g01p04", "g01p05"),
+        ]
 
-        # Create data for each alliance state
+        data = []
         for state, label in [
             (0, "neutral"),
             (1, "positive"),
             (-1, "negative"),
             (2, "split"),
         ]:
-            # Different mean ICD for each state
             base_icd = {0: 0.5, 1: 0.3, -1: 0.7, 2: 0.6}[state]
 
-            for dtype in ["real", "pseudo"]:
-                n_samples = 50 if dtype == "real" else 100
-
-                for i in range(n_samples):
-                    data.append(
-                        {
-                            "epoch_id": i,
-                            "icd": base_icd + np.random.normal(0, 0.1),
-                            "alliance_state": state,
-                            "alliance_label": label,
-                            "dyad": f"dyad_{dtype}_{i % 10}",
-                            "dyad_type": dtype,
-                            "family": f"g0{(i % 5) + 1}",
-                            "session": "ses-01",
-                        }
-                    )
+            for dtype, dyad_pairs in [("real", real_dyads), ("pseudo", pseudo_dyads)]:
+                n_epochs = 15 if dtype == "real" else 15
+                for p1, p2 in dyad_pairs:
+                    dyad_name = f"{p1}_ses-01_vs_{p2}_ses-01"
+                    family = p1[:3]
+                    for epoch in range(n_epochs):
+                        data.append(
+                            {
+                                "epoch_id": epoch,
+                                "icd": base_icd + np.random.normal(0, 0.1),
+                                "alliance_state": state,
+                                "alliance_label": label,
+                                "dyad": dyad_name,
+                                "dyad_type": dtype,
+                                "family": family,
+                                "session": "ses-01",
+                            }
+                        )
 
         return pd.DataFrame(data)
 
@@ -183,27 +199,34 @@ class TestAllianceICDAnalyzer:
         stats = analyzer.compute_descriptive_stats(pd.DataFrame())
         assert stats.empty
 
-    def test_test_alliance_effect(self, analyzer, sample_data):
-        """Test Kruskal-Wallis test."""
-        result = analyzer.test_alliance_effect(sample_data)
+    def test_test_alliance_effect_naive(self, analyzer, sample_data):
+        """Test naive Kruskal-Wallis test."""
+        result = analyzer.test_alliance_effect_naive(sample_data)
 
         assert "test" in result
         assert "statistic" in result
         assert "p_value" in result
         assert "significant" in result
         assert "groups" in result
-
-        # With our sample data, there should be a significant effect
-        # since we created different means per alliance type
         assert result["test"] == "Kruskal-Wallis H-test"
+
+    def test_test_alliance_effect_deprecation(self, analyzer, sample_data):
+        """Test that old method emits deprecation warning."""
+        import warnings
+
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            analyzer.test_alliance_effect(sample_data)
+            assert len(w) == 1
+            assert issubclass(w[0].category, DeprecationWarning)
 
     def test_test_alliance_effect_empty(self, analyzer):
         """Test with empty data."""
-        result = analyzer.test_alliance_effect(pd.DataFrame())
+        result = analyzer.test_alliance_effect_naive(pd.DataFrame())
         assert "error" in result
 
-    def test_pairwise_comparisons(self, analyzer, sample_data):
-        """Test pairwise Mann-Whitney U tests."""
+    def test_pairwise_comparisons_fdr(self, analyzer, sample_data):
+        """Test pairwise Mann-Whitney U tests with FDR correction."""
         pairwise = analyzer.pairwise_comparisons(sample_data)
 
         assert "group1" in pairwise.columns
@@ -211,13 +234,45 @@ class TestAllianceICDAnalyzer:
         assert "p_value" in pairwise.columns
         assert "p_adjusted" in pairwise.columns
         assert "significant" in pairwise.columns
+        assert "correction_method" in pairwise.columns
+        assert (pairwise["correction_method"] == "fdr_bh").all()
 
         # Should have C(4,2) = 6 pairwise comparisons
         assert len(pairwise) == 6
 
-    def test_compare_real_vs_pseudo_overall(self, analyzer, sample_data):
-        """Test comparing real vs pseudo dyads overall."""
-        result = analyzer.compare_real_vs_pseudo(sample_data, by_alliance=False)
+    def test_pairwise_comparisons_bonferroni(self, analyzer, sample_data):
+        """Test pairwise comparisons with Bonferroni correction."""
+        pairwise = analyzer.pairwise_comparisons(sample_data, correction="bonferroni")
+
+        assert (pairwise["correction_method"] == "bonferroni").all()
+        assert len(pairwise) == 6
+        # All adjusted p-values should be >= raw p-values
+        assert (pairwise["p_adjusted"] >= pairwise["p_value"]).all()
+
+    def test_compute_effect_sizes(self, analyzer, sample_data):
+        """Test effect size computation."""
+        effects = analyzer.compute_effect_sizes(sample_data)
+
+        assert "epsilon_squared" in effects
+        assert "h_statistic" in effects
+        assert "n_total" in effects
+        assert "k_groups" in effects
+        assert 0 <= effects["epsilon_squared"] <= 1
+
+    def test_compute_icc_structure(self, analyzer, sample_data):
+        """Test ICC structure computation."""
+        icc = analyzer.compute_icc_structure(sample_data)
+
+        assert "icc_family" in icc
+        assert "icc_dyad" in icc
+        assert "n_families" in icc
+        assert "n_dyads" in icc
+        assert isinstance(icc["icc_family"], float)
+        assert isinstance(icc["icc_dyad"], float)
+
+    def test_compare_real_vs_pseudo_naive_overall(self, analyzer, sample_data):
+        """Test naive Mann-Whitney comparison of real vs pseudo dyads."""
+        result = analyzer.compare_real_vs_pseudo_naive(sample_data, by_alliance=False)
 
         assert "overall" in result
         assert "n_real" in result["overall"]
@@ -226,15 +281,66 @@ class TestAllianceICDAnalyzer:
         assert "mean_pseudo" in result["overall"]
         assert "p_value" in result["overall"]
 
-    def test_compare_real_vs_pseudo_by_alliance(self, analyzer, sample_data):
-        """Test comparing real vs pseudo dyads by alliance state."""
-        result = analyzer.compare_real_vs_pseudo(sample_data, by_alliance=True)
+    def test_compare_real_vs_pseudo_naive_by_alliance(self, analyzer, sample_data):
+        """Test naive comparison by alliance state."""
+        result = analyzer.compare_real_vs_pseudo_naive(sample_data, by_alliance=True)
 
-        # Should have results for each alliance state
         assert "Neutral" in result
         assert "Positive" in result
         assert "Negative" in result
         assert "Split" in result
+
+    def test_compare_real_vs_pseudo_deprecation(self, analyzer, sample_data):
+        """Test that old method emits deprecation warning."""
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            analyzer.compare_real_vs_pseudo(sample_data, by_alliance=False)
+            assert len(w) == 1
+            assert issubclass(w[0].category, DeprecationWarning)
+            assert "compare_real_vs_pseudo" in str(w[0].message)
+
+    def test_compare_real_vs_pseudo_mixed(self, analyzer, sample_data):
+        """Test mixed-model comparison of real vs pseudo dyads."""
+        result = analyzer.compare_real_vs_pseudo_mixed(sample_data, by_alliance=False)
+
+        assert "error" not in result
+        assert result["test"] == "Linear Mixed-Effects Model"
+        assert "coefficient" in result
+        assert "p_value" in result
+        assert "ci_lower" in result
+        assert "ci_upper" in result
+        assert "icc_participant" in result
+        assert result["n_participants"] == 6
+        assert result["ci_lower"] < result["coefficient"] < result["ci_upper"]
+
+    def test_compare_real_vs_pseudo_mixed_by_alliance(self, analyzer, sample_data):
+        """Test mixed-model comparison per alliance state."""
+        result = analyzer.compare_real_vs_pseudo_mixed(sample_data, by_alliance=True)
+
+        for label in ["Neutral", "Positive", "Negative", "Split"]:
+            assert label in result
+            assert "coefficient" in result[label] or "error" in result[label]
+
+    def test_compare_real_vs_pseudo_aggregated(self, analyzer, sample_data):
+        """Test participant-aggregated Wilcoxon comparison."""
+        result = analyzer.compare_real_vs_pseudo_aggregated(sample_data)
+
+        assert "error" not in result
+        assert result["test"] == "Wilcoxon signed-rank (participant-aggregated)"
+        assert result["n_participants"] == 6
+        assert "mean_real" in result
+        assert "mean_pseudo" in result
+        assert "W_statistic" in result
+        assert "p_value" in result
+        assert "cohens_d_paired" in result
+
+    def test_extract_participants_from_dyad(self):
+        """Test dyad name parsing into participant IDs."""
+        p1, p2 = AllianceICDAnalyzer._extract_participants_from_dyad(
+            "g01p02_ses-01_vs_g01p01_ses-01"
+        )
+        assert p1 == "g01p02"
+        assert p2 == "g01p01"
 
     def test_compute_stats_by_dyad_type(self, analyzer, sample_data):
         """Test computing stats separately by dyad type."""
