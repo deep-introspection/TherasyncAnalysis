@@ -17,11 +17,11 @@ from .alliance_icd_analyzer import AllianceICDAnalyzer
 from .alliance_icd_plotter import AllianceICDStatsPlotter
 
 __all__ = [
-    'MOILoader',
-    'MOIEpocher',
-    'MOIWriter',
-    'MOIVisualizer',
-    'AllianceICDLoader',
-    'AllianceICDAnalyzer',
-    'AllianceICDStatsPlotter',
+    "MOILoader",
+    "MOIEpocher",
+    "MOIWriter",
+    "MOIVisualizer",
+    "AllianceICDLoader",
+    "AllianceICDAnalyzer",
+    "AllianceICDStatsPlotter",
 ]

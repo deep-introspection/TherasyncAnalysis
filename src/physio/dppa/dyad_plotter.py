@@ -86,7 +86,9 @@ class DyadPlotter:
 
         # Create figure with GridSpec layout
         fig = plt.figure(figsize=(fig_width, fig_height))
-        gs = gridspec.GridSpec(2, 3, figure=fig, height_ratios=[1, 1], hspace=0.3, wspace=0.3)
+        gs = gridspec.GridSpec(
+            2, 3, figure=fig, height_ratios=[1, 1], hspace=0.3, wspace=0.3
+        )
 
         # Row 1: ICD subplot (spans all columns)
         ax_icd = fig.add_subplot(gs[0, :])
@@ -106,11 +108,11 @@ class DyadPlotter:
             f"Dyadic Analysis: {dyad_info['sub1']}/ses-{dyad_info['ses1']} "
             f"vs {dyad_info['sub2']}/ses-{dyad_info['ses2']} ({method})"
         )
-        fig.suptitle(title, fontsize=14, fontweight='bold')
+        fig.suptitle(title, fontsize=14, fontweight="bold")
 
         # Save figure
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        fig.savefig(output_path, dpi=dpi, bbox_inches='tight')
+        fig.savefig(output_path, dpi=dpi, bbox_inches="tight")
         plt.close(fig)
 
         logger.info(f"Plot saved to: {output_path}")
@@ -136,7 +138,7 @@ class DyadPlotter:
         """
         # Remove NaN values before regression
         clean_data = therapy_icd.dropna(subset=["icd_value"])
-        
+
         if len(clean_data) < 2:
             logger.warning(
                 f"Insufficient data for trendline: {len(clean_data)} valid points"
@@ -144,13 +146,13 @@ class DyadPlotter:
             # Return zeros if not enough data
             x_all = therapy_icd["epoch_id"].values
             return np.zeros_like(x_all, dtype=float), 0.0
-        
+
         x = clean_data["epoch_id"].values
         y = clean_data["icd_value"].values
 
         # Linear regression on clean data
         slope, intercept, r_value, p_value, std_err = stats.linregress(x, y)
-        
+
         # Compute fitted values for all epochs (including those with NaN)
         x_all = therapy_icd["epoch_id"].values
         fitted_values = slope * x_all + intercept
@@ -187,8 +189,8 @@ class DyadPlotter:
             color=therapy_color,
             linewidth=therapy_lw,
             label="Therapy ICD",
-            marker='o',
-            markersize=3
+            marker="o",
+            markersize=3,
         )
 
         # Calculate and plot trendline
@@ -199,7 +201,7 @@ class DyadPlotter:
             color=trendline_color,
             linewidth=trendline_lw,
             linestyle=trendline_ls,
-            label=f"Trendline (slope={slope:.3f})"
+            label=f"Trendline (slope={slope:.3f})",
         )
 
         # Plot resting state baseline
@@ -209,16 +211,16 @@ class DyadPlotter:
             color=resting_color,
             linewidth=baseline_lw,
             linestyle=baseline_ls,
-            label="Resting Baseline"
+            label="Resting Baseline",
         )
 
         # Labels and legend
         labels = self.viz_config.get("labels", {})
         ax.set_xlabel(labels.get("epoch", "Epoch ID"))
         ax.set_ylabel(labels.get("icd", "Inter-Centroid Distance (ms)"))
-        ax.legend(loc='best')
+        ax.legend(loc="best")
         ax.grid(True, alpha=0.3)
-        
+
         # Set Y-axis limits
         ylimits = self.viz_config.get("ylimits", {})
         if "icd" in ylimits:
@@ -231,9 +233,7 @@ class DyadPlotter:
         dyad_info: Dict[str, str],
     ) -> None:
         """Plot SD1 time series for both subjects with baselines."""
-        self._plot_metric_subplot(
-            ax, centroid_data, dyad_info, "sd1", "SD1 (ms)"
-        )
+        self._plot_metric_subplot(ax, centroid_data, dyad_info, "sd1", "SD1 (ms)")
 
     def _plot_sd2_subplot(
         self,
@@ -242,9 +242,7 @@ class DyadPlotter:
         dyad_info: Dict[str, str],
     ) -> None:
         """Plot SD2 time series for both subjects with baselines."""
-        self._plot_metric_subplot(
-            ax, centroid_data, dyad_info, "sd2", "SD2 (ms)"
-        )
+        self._plot_metric_subplot(ax, centroid_data, dyad_info, "sd2", "SD2 (ms)")
 
     def _plot_ratio_subplot(
         self,
@@ -279,8 +277,6 @@ class DyadPlotter:
         colors = self.viz_config.get("colors", {})
         sub1_color = colors.get("subject1", "#1f77b4")
         sub2_color = colors.get("subject2", "#ff7f0e")
-        resting_color = colors.get("resting", "#2ca02c")
-
         styles = self.viz_config.get("styles", {})
         therapy_lw = styles.get("therapy_linewidth", 1.5)
         baseline_lw = styles.get("baseline_linewidth", 1.0)
@@ -297,8 +293,8 @@ class DyadPlotter:
             color=sub1_color,
             linewidth=therapy_lw,
             label=f"{dyad_info['sub1']}",
-            marker='o',
-            markersize=2
+            marker="o",
+            markersize=2,
         )
         ax.plot(
             df2_therapy["epoch_id"],
@@ -306,8 +302,8 @@ class DyadPlotter:
             color=sub2_color,
             linewidth=therapy_lw,
             label=f"{dyad_info['sub2']}",
-            marker='s',
-            markersize=2
+            marker="s",
+            markersize=2,
         )
 
         # Plot resting baselines
@@ -319,27 +315,26 @@ class DyadPlotter:
             color=sub1_color,
             linewidth=baseline_lw,
             linestyle=baseline_ls,
-            alpha=0.7
+            alpha=0.7,
         )
         ax.axhline(
             y=rest_val2,
             color=sub2_color,
             linewidth=baseline_lw,
             linestyle=baseline_ls,
-            alpha=0.7
+            alpha=0.7,
         )
 
         # Labels and legend
         labels = self.viz_config.get("labels", {})
         ax.set_xlabel(labels.get("epoch", "Epoch ID"))
         ax.set_ylabel(ylabel)
-        ax.legend(loc='best', fontsize=8)
+        ax.legend(loc="best", fontsize=8)
         ax.grid(True, alpha=0.3)
-        
+
         # Set Y-axis limits based on metric
         ylimits = self.viz_config.get("ylimits", {})
         if metric in ylimits:
             ax.set_ylim(0, ylimits[metric])
         elif metric == "sd_ratio" and "ratio" in ylimits:
             ax.set_ylim(0, ylimits["ratio"])
-

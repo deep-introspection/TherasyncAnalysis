@@ -34,15 +34,15 @@ from .poincare_plotter import PoincarePlotter
 from .icd_stats_plotter import ICDStatsPlotter
 
 __all__ = [
-    'PoincareCalculator',
-    'CentroidLoader',
-    'DyadConfigLoader',
-    'ICDCalculator',
-    'DPPAWriter',
-    'DyadICDLoader',
-    'DyadCentroidLoader',
-    'DyadPlotter',
-    'EpochAnimator',
-    'PoincarePlotter',
-    'ICDStatsPlotter',
+    "PoincareCalculator",
+    "CentroidLoader",
+    "DyadConfigLoader",
+    "ICDCalculator",
+    "DPPAWriter",
+    "DyadICDLoader",
+    "DyadCentroidLoader",
+    "DyadPlotter",
+    "EpochAnimator",
+    "PoincarePlotter",
+    "ICDStatsPlotter",
 ]

@@ -38,7 +38,9 @@ class DyadICDLoader:
                         If None, uses default config.yaml.
         """
         self.config = ConfigLoader(config_path)
-        self.derivatives_path = Path(self.config.get("paths.derivatives", "data/derivatives"))
+        self.derivatives_path = Path(
+            self.config.get("paths.derivatives", "data/derivatives")
+        )
         logger.info("DyadICDLoader initialized")
 
     def parse_dyad_info(self, dyad_pair: str) -> Dict[str, str]:
@@ -100,8 +102,7 @@ class DyadICDLoader:
             )
 
     def load_icd(
-        self, dyad_pair: str, task: str, method: str,
-        dyad_type: Optional[str] = None
+        self, dyad_pair: str, task: str, method: str, dyad_type: Optional[str] = None
     ) -> pd.DataFrame:
         """
         Load ICD time series for a specific dyad and task.
@@ -132,16 +133,16 @@ class DyadICDLoader:
         """
         # Parse dyad info
         dyad_info = self.parse_dyad_info(dyad_pair)
-        
+
         # Auto-detect dyad type if not provided
         if dyad_type is None:
             # If same session, likely intra_family; if different sessions, inter_session
-            if dyad_info['ses1'] == dyad_info['ses2']:
+            if dyad_info["ses1"] == dyad_info["ses2"]:
                 # Same session - could be either, try intra_family first for real dyads
                 dyad_type = "intra_family"
             else:
                 dyad_type = "inter_session"
-        
+
         # Construct file path
         icd_file = (
             self.derivatives_path
@@ -149,7 +150,7 @@ class DyadICDLoader:
             / dyad_type
             / f"{dyad_type}_icd_task-{task}_method-{method}.csv"
         )
-        
+
         # If file not found with intra_family, try inter_session as fallback
         if not icd_file.exists() and dyad_type == "intra_family":
             dyad_type = "inter_session"
@@ -175,28 +176,39 @@ class DyadICDLoader:
         if "epoch_id" not in df.columns:
             raise ValueError(f"Missing 'epoch_id' column in {icd_file}")
 
-        # Try original dyad_pair, then try reversed order (ICD is symmetric)
+        # Try original dyad_pair, then alternative column formats (ICD is symmetric)
         actual_dyad_pair = dyad_pair
-        if dyad_pair not in df.columns:
-            # Try reversed order: "A_vs_B" -> "B_vs_A"
-            if "_vs_" in dyad_pair:
-                parts = dyad_pair.split("_vs_")
-                reversed_pair = f"{parts[1]}_vs_{parts[0]}"
-                if reversed_pair in df.columns:
-                    actual_dyad_pair = reversed_pair
+        if dyad_pair not in df.columns and "_vs_" in dyad_pair:
+            info = self.parse_dyad_info(dyad_pair)
+            # Build candidate column names in all possible formats
+            candidates = [
+                # Reversed: "sub2_ses-YY_vs_sub1_ses-XX"
+                f"{info['sub2']}_ses-{info['ses2']}_vs_{info['sub1']}_ses-{info['ses1']}",
+                # Intra-family format: "sub1_vs_sub2_ses-XX"
+                f"{info['sub1']}_vs_{info['sub2']}_ses-{info['ses1']}",
+                # Intra-family reversed: "sub2_vs_sub1_ses-XX"
+                f"{info['sub2']}_vs_{info['sub1']}_ses-{info['ses1']}",
+            ]
+            matched = False
+            for candidate in candidates:
+                if candidate in df.columns:
+                    actual_dyad_pair = candidate
                     logger.debug(
-                        f"Dyad pair '{dyad_pair}' not found, using reversed: '{reversed_pair}'"
+                        f"Dyad pair '{dyad_pair}' not found, using: '{candidate}'"
                     )
-                else:
-                    raise ValueError(
-                        f"Dyad pair '{dyad_pair}' (nor reversed '{reversed_pair}') not found in {icd_file}. "
-                        f"Available columns: {list(df.columns)}"
-                    )
-            else:
+                    matched = True
+                    break
+            if not matched:
                 raise ValueError(
                     f"Dyad pair '{dyad_pair}' not found in {icd_file}. "
+                    f"Tried: {candidates}. "
                     f"Available columns: {list(df.columns)}"
                 )
+        elif dyad_pair not in df.columns:
+            raise ValueError(
+                f"Dyad pair '{dyad_pair}' not found in {icd_file}. "
+                f"Available columns: {list(df.columns)}"
+            )
 
         # Extract relevant columns and rename
         result = df[["epoch_id", actual_dyad_pair]].copy()
@@ -237,10 +249,10 @@ class DyadICDLoader:
         """
         # Normalize methods to dict format
         if isinstance(methods, str):
-            methods_dict = {'restingstate': methods, 'therapy': methods}
+            methods_dict = {"restingstate": methods, "therapy": methods}
         else:
             methods_dict = methods
-        
+
         logger.info(f"Loading both tasks for dyad: {dyad_pair}")
         for task, method in methods_dict.items():
             logger.debug(f"  {task}: {method}")
@@ -256,8 +268,8 @@ class DyadICDLoader:
                     raise
 
         logger.info(
-            f"Successfully loaded tasks: " +
-            ", ".join(f"{t}={len(df)} epochs" for t, df in result.items())
+            "Successfully loaded tasks: "
+            + ", ".join(f"{t}={len(df)} epochs" for t, df in result.items())
         )
 
         return result

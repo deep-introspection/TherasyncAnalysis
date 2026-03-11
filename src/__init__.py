@@ -11,6 +11,4 @@ __email__ = "remy.ramadour.labs@gmail.com"
 # Import core functionality
 from .core import setup_logging, get_logger, load_config
 
-__all__ = [
-    'setup_logging', 'get_logger', 'load_config'
-]
+__all__ = ["setup_logging", "get_logger", "load_config"]

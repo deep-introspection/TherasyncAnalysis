@@ -28,18 +28,18 @@ from src.physio.preprocessing import (
 
 __all__ = [
     # BVP Pipeline
-    'BVPLoader',
-    'BVPCleaner',
-    'BVPMetricsExtractor',
-    'BVPBIDSWriter',
+    "BVPLoader",
+    "BVPCleaner",
+    "BVPMetricsExtractor",
+    "BVPBIDSWriter",
     # EDA Pipeline
-    'EDALoader',
-    'EDACleaner',
-    'EDAMetricsExtractor',
-    'EDABIDSWriter',
+    "EDALoader",
+    "EDACleaner",
+    "EDAMetricsExtractor",
+    "EDABIDSWriter",
     # HR Pipeline
-    'HRLoader',
-    'HRCleaner',
-    'HRMetricsExtractor',
-    'HRBIDSWriter',
+    "HRLoader",
+    "HRCleaner",
+    "HRMetricsExtractor",
+    "HRBIDSWriter",
 ]

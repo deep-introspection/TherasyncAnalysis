@@ -31,23 +31,23 @@ from .temp_bids_writer import TEMPBIDSWriter
 
 __all__ = [
     # BVP
-    'BVPLoader',
-    'BVPCleaner',
-    'BVPMetricsExtractor',
-    'BVPBIDSWriter',
+    "BVPLoader",
+    "BVPCleaner",
+    "BVPMetricsExtractor",
+    "BVPBIDSWriter",
     # EDA
-    'EDALoader',
-    'EDACleaner',
-    'EDAMetricsExtractor',
-    'EDABIDSWriter',
+    "EDALoader",
+    "EDACleaner",
+    "EDAMetricsExtractor",
+    "EDABIDSWriter",
     # HR
-    'HRLoader',
-    'HRCleaner',
-    'HRMetricsExtractor',
-    'HRBIDSWriter',
+    "HRLoader",
+    "HRCleaner",
+    "HRMetricsExtractor",
+    "HRBIDSWriter",
     # TEMP
-    'TEMPLoader',
-    'TEMPCleaner',
-    'TEMPMetricsExtractor',
-    'TEMPBIDSWriter',
+    "TEMPLoader",
+    "TEMPCleaner",
+    "TEMPMetricsExtractor",
+    "TEMPBIDSWriter",
 ]

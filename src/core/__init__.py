@@ -10,7 +10,13 @@ from .bids_utils import BIDSUtils, create_bids_filename, BIDSError
 from .logger_setup import LoggerSetup, setup_logging, get_logger
 
 __all__ = [
-    'ConfigLoader', 'load_config', 'ConfigError',
-    'BIDSUtils', 'create_bids_filename', 'BIDSError', 
-    'LoggerSetup', 'setup_logging', 'get_logger'
+    "ConfigLoader",
+    "load_config",
+    "ConfigError",
+    "BIDSUtils",
+    "create_bids_filename",
+    "BIDSError",
+    "LoggerSetup",
+    "setup_logging",
+    "get_logger",
 ]

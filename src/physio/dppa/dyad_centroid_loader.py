@@ -38,7 +38,9 @@ class DyadCentroidLoader:
                         If None, uses default config.yaml.
         """
         self.config = ConfigLoader(config_path)
-        self.derivatives_path = Path(self.config.get("paths.derivatives", "data/derivatives"))
+        self.derivatives_path = Path(
+            self.config.get("paths.derivatives", "data/derivatives")
+        )
         logger.info("DyadCentroidLoader initialized")
 
     def load_centroids(
@@ -148,9 +150,16 @@ class DyadCentroidLoader:
         df = pd.read_csv(file_path, sep="\t")
 
         # Validate required columns
-        required_cols = ["epoch_id", "centroid_x", "centroid_y", "sd1", "sd2", "sd_ratio"]
+        required_cols = [
+            "epoch_id",
+            "centroid_x",
+            "centroid_y",
+            "sd1",
+            "sd2",
+            "sd_ratio",
+        ]
         missing_cols = [col for col in required_cols if col not in df.columns]
-        
+
         if missing_cols:
             raise ValueError(
                 f"Missing required columns in {file_path}: {missing_cols}\n"
@@ -159,9 +168,7 @@ class DyadCentroidLoader:
 
         return df
 
-    def validate_epoch_alignment(
-        self, df1: pd.DataFrame, df2: pd.DataFrame
-    ) -> bool:
+    def validate_epoch_alignment(self, df1: pd.DataFrame, df2: pd.DataFrame) -> bool:
         """
         Validate that two DataFrames have matching epoch_ids.
 
@@ -181,9 +188,7 @@ class DyadCentroidLoader:
             True
         """
         if len(df1) != len(df2):
-            logger.warning(
-                f"Epoch count mismatch: {len(df1)} vs {len(df2)} epochs"
-            )
+            logger.warning(f"Epoch count mismatch: {len(df1)} vs {len(df2)} epochs")
             return False
 
         epochs1 = set(df1["epoch_id"])
@@ -231,10 +236,10 @@ class DyadCentroidLoader:
         """
         # Normalize methods to dict format
         if isinstance(methods, str):
-            methods_dict = {'restingstate': methods, 'therapy': methods}
+            methods_dict = {"restingstate": methods, "therapy": methods}
         else:
             methods_dict = methods
-        
+
         logger.info(
             f"Loading both tasks for dyad: {dyad_info['sub1']}_ses-{dyad_info['ses1']} "
             f"vs {dyad_info['sub2']}_ses-{dyad_info['ses2']}"
@@ -253,8 +258,11 @@ class DyadCentroidLoader:
                     raise
 
         logger.info(
-            f"Successfully loaded tasks: " +
-            ", ".join(f"{t}=({len(dfs[0])}, {len(dfs[1])}) epochs" for t, dfs in result.items())
+            "Successfully loaded tasks: "
+            + ", ".join(
+                f"{t}=({len(dfs[0])}, {len(dfs[1])}) epochs"
+                for t, dfs in result.items()
+            )
         )
 
         return result

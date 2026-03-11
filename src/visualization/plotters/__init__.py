@@ -11,10 +11,4 @@ Contains specialized plotting functions organized by visualization type:
 Authors: Lena Adel, Remy Ramadour
 """
 
-__all__ = [
-    "signal_plots",
-    "hrv_plots", 
-    "eda_plots",
-    "temp_plots",
-    "comparison_plots"
-]
+__all__ = ["signal_plots", "hrv_plots", "eda_plots", "temp_plots", "comparison_plots"]
