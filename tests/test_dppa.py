@@ -115,6 +115,37 @@ class TestPoincareCalculator(unittest.TestCase):
         self.assertIn("centroid_x", result)
         self.assertIn("n_intervals", result)
 
+    def test_reliability_flag_sufficient_pairs(self):
+        """Test that reliable=True when enough pairs exist."""
+        # 100 intervals → 99 pairs (default threshold=20)
+        result = self.calculator.compute_poincare_metrics(self.rr_intervals)
+        self.assertTrue(result["reliable"])
+
+    def test_reliability_flag_insufficient_pairs(self):
+        """Test that reliable=False when too few pairs."""
+        # 10 intervals → 9 pairs (< 20 threshold)
+        rr_short = np.random.normal(750, 50, 10)
+        result = self.calculator.compute_poincare_metrics(rr_short)
+        self.assertFalse(result["reliable"])
+
+    def test_reliability_flag_empty(self):
+        """Test reliability flag for empty input."""
+        result = self.calculator.compute_poincare_metrics(np.array([]))
+        self.assertFalse(result["reliable"])
+
+    def test_reliability_flag_custom_threshold(self):
+        """Test reliability flag with custom threshold."""
+        self.calculator.min_poincare_pairs = 5
+        rr_short = np.random.normal(750, 50, 10)
+        result = self.calculator.compute_poincare_metrics(rr_short)
+        # 9 pairs >= 5 threshold
+        self.assertTrue(result["reliable"])
+
+    def test_reliable_key_present_in_output(self):
+        """Test that 'reliable' key is always in output."""
+        result = self.calculator.compute_poincare_metrics(self.rr_intervals)
+        self.assertIn("reliable", result)
+
 
 class TestCentroidLoader(unittest.TestCase):
     """Test centroid file loading and caching."""

@@ -50,6 +50,9 @@ class PoincareCalculator:
         preprocessing_dir = self.config.get("output.preprocessing_dir", "preprocessing")
         self.preprocessing_dir = derivatives_dir / preprocessing_dir
 
+        # Minimum pairs for reliable Poincaré metrics
+        self.min_poincare_pairs = self.config.get("statistics.min_poincare_pairs", 20)
+
         logger.info(
             f"Poincaré Calculator initialized (reading from {self.preprocessing_dir})"
         )
@@ -76,6 +79,7 @@ class PoincareCalculator:
                 "sd2": np.nan,
                 "sd_ratio": np.nan,
                 "n_intervals": n_intervals,
+                "reliable": False,
             }
 
         # Create Poincaré pairs: (RRn, RRn+1)
@@ -99,13 +103,23 @@ class PoincareCalculator:
         # SD ratio (sympatho-vagal balance)
         sd_ratio = sd1 / sd2 if sd2 > 0 else np.nan
 
+        n_pairs = n_intervals - 1  # Number of pairs (RRn, RRn+1)
+        reliable = n_pairs >= self.min_poincare_pairs
+
+        if not reliable:
+            logger.warning(
+                f"Poincaré metrics may be unreliable: "
+                f"{n_pairs} pairs < {self.min_poincare_pairs} minimum"
+            )
+
         return {
             "centroid_x": centroid_x,
             "centroid_y": centroid_y,
             "sd1": sd1,
             "sd2": sd2,
             "sd_ratio": sd_ratio,
-            "n_intervals": n_intervals - 1,  # Number of pairs (RRn, RRn+1)
+            "n_intervals": n_pairs,
+            "reliable": reliable,
         }
 
     def compute_centroids_for_file(self, rr_file: Path, method: str) -> pd.DataFrame:
@@ -162,6 +176,7 @@ class PoincareCalculator:
                 "sd2",
                 "sd_ratio",
                 "n_intervals",
+                "reliable",
             ]
         ]
 
