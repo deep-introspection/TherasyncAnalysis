@@ -16,6 +16,8 @@ Modules:
 - epoch_animator: Prepare epoch-by-epoch data for animations
 - poincare_plotter: Generate Poincaré plot visualizations
 - icd_stats_plotter: Statistical visualizations for real vs pseudo dyads
+- synchrony_calculator: Dynamic synchrony metrics between dyad members
+- synchrony_stats: Statistical testing pipeline for synchrony metrics
 
 Authors: Lena Adel, Remy Ramadour
 Date: November 2025
@@ -32,6 +34,16 @@ from .dyad_plotter import DyadPlotter
 from .epoch_animator import EpochAnimator
 from .poincare_plotter import PoincarePlotter
 from .icd_stats_plotter import ICDStatsPlotter
+from .synchrony_calculator import (
+    compute_centroid_correlation,
+    compute_feature_concordance,
+    compute_lagged_cross_correlation,
+)
+from .synchrony_stats import (
+    compute_synchrony_for_all_dyads,
+    generate_synchrony_report,
+    compare_real_vs_pseudo_synchrony,
+)
 
 __all__ = [
     "PoincareCalculator",
@@ -45,4 +57,10 @@ __all__ = [
     "EpochAnimator",
     "PoincarePlotter",
     "ICDStatsPlotter",
+    "compute_centroid_correlation",
+    "compute_feature_concordance",
+    "compute_lagged_cross_correlation",
+    "compute_synchrony_for_all_dyads",
+    "generate_synchrony_report",
+    "compare_real_vs_pseudo_synchrony",
 ]
